@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متبع GPS - معلومات البرج</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9; }
+        #map { height: 60vh; width: 100%; }
+        .info-box { padding: 20px; background: white; border-radius: 15px 15px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); margin-top: -20px; position: relative; z-index: 1000; }
+        h2 { margin: 0 0 10px 0; color: #333; font-size: 18px; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .label { font-weight: bold; color: #666; }
+        .value { color: #007bff; font-weight: bold; }
+        .status { padding: 5px 10px; border-radius: 5px; color: white; font-size: 14px; text-align: center; margin-bottom: 15px; }
+        .online { background-color: #28a745; }
+        .offline { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="info-box">
+        <div id="statusBtn" class="status offline">جاري الاتصال...</div>
+        
+        <div class="data-row">
+            <span class="label">⏰ آخر تحديث:</span>
+            <span class="value" id="time">--:--:--</span>
+        </div>
+        <div class="data-row">
+            <span class="label">📶 نوع الشبكة:</span>
+            <span class="value" id="netType">--</span>
+        </div>
+        <div class="data-row">
+            <span class="label">🗼 رقم البرج (Cell ID):</span>
+            <span class="value" id="cellId">--</span>
+        </div>
+        <div class="data-row">
+            <span class="label">📍 المنطقة (LAC):</span>
+            <span class="value" id="lac">--</span>
+        </div>
+        <div class="data-row">
+            <span class="label">🚗 السرعة:</span>
+            <span class="value" id="speed">0 km/h</span>
+        </div>
+        <div class="data-row">
+            <span class="label">🔗 رابط خرائط جوجل:</span>
+            <span class="value"><a id="gmaps" href="#" target="_blank">فتح الموقع</a></span>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // 🔴 استبدل هذا الرابط برابط الداتابيس الخاص بك 🔴
+        const firebaseConfig = {
+            databaseURL: "https://gps-tracker-534ae-default-rtdb.firebaseio.com/"
+        };
+        // ---------------------------------------------------------
+
+        firebase.initializeApp(firebaseConfig);
+        const dbRef = firebase.database().ref('gps');
+
+        // إعداد الخريطة
+        var map = L.map('map').setView([33.3152, 44.3661], 10); // موقع افتراضي (بغداد)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var marker = L.marker([33.3152, 44.3661]).addTo(map);
+
+        // الاستماع للبيانات
+        dbRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const lat = parseFloat(data.lat);
+                const lng = parseFloat(data.lng);
+                
+                // تحديث الخريطة
+                marker.setLatLng([lat, lng]);
+                map.setView([lat, lng], 15);
+
+                // تحديث النصوص والبيانات الجديدة
+                document.getElementById('time').innerText = data.time || "غير متوفر";
+                document.getElementById('speed').innerText = data.speed + " km/h";
+                
+                // --- هنا نظهر بيانات البرج الجديدة ---
+                document.getElementById('netType').innerText = data.net_type || "N/A";
+                document.getElementById('cellId').innerText = data.cell_id || "جاري البحث...";
+                document.getElementById('lac').innerText = data.lac || "N/A";
+                // ------------------------------------
+
+                // رابط جوجل مابس
+                document.getElementById('gmaps').href = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                // حالة الاتصال (بناء على آخر تحديث)
+                document.getElementById('statusBtn').className = "status online";
+                document.getElementById('statusBtn').innerText = "متصل ✅";
+            }
+        });
+
+    </script>
+</body>
+</html>
