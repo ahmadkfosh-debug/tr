@@ -3,486 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام تتبع GPS - معلومات البرج والموقع</title>
+    <title>لوحة التتبع الاحترافية 🛰️</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
     <style>
-        :root {
-            --primary: #007bff;
-            --success: #28a745;
-            --danger: #dc3545;
-            --warning: #ffc107;
-            --dark: #343a40;
-            --light: #f8f9fa;
-            --gray: #6c757d;
-            --border-radius: 12px;
-            --box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
-        }
-        
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f0f2f5;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, var(--primary), #0056b3);
-            color: white;
-            padding: 18px 20px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-            position: relative;
-            z-index: 10;
-        }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .header h1 i {
-            font-size: 1.8rem;
-        }
-        
-        #map-container {
-            position: relative;
-            height: 55vh;
-            width: 100%;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        #map {
-            height: 100%;
-            width: 100%;
-        }
-        
-        .map-overlay {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .status-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 12px 18px;
-            box-shadow: var(--box-shadow);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .status-online {
-            background-color: var(--success);
-            box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
-        }
-        
-        .status-offline {
-            background-color: var(--danger);
-            box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
-        }
-        
-        .status-text {
-            font-weight: bold;
-            font-size: 0.95rem;
-        }
-        
-        .refresh-btn {
-            background: white;
+        /* تنسيق بطاقات المصادر */
+        .source-card {
             border: none;
-            border-radius: var(--border-radius);
-            padding: 10px 15px;
-            box-shadow: var(--box-shadow);
-            cursor: pointer;
-            color: var(--primary);
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
-        }
-        
-        .refresh-btn:hover {
-            background: var(--primary);
-            color: white;
-        }
-        
-        .info-container {
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        
-        @media (min-width: 768px) {
-            .info-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        .info-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 20px;
-            box-shadow: var(--box-shadow);
-            transition: transform 0.3s;
-        }
-        
-        .info-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .card-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #eee;
-            color: var(--dark);
-        }
-        
-        .card-header i {
-            font-size: 1.4rem;
-            margin-left: 10px;
-            color: var(--primary);
-        }
-        
-        .card-header h3 {
-            margin: 0;
-            font-size: 1.2rem;
-        }
-        
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px dashed #eee;
-        }
-        
-        .data-row:last-child {
-            border-bottom: none;
-        }
-        
-        .data-label {
-            font-weight: 600;
-            color: var(--gray);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .data-value {
-            font-weight: bold;
-            color: var(--dark);
-            text-align: left;
-            direction: ltr;
-        }
-        
-        .speed-value {
-            color: var(--primary);
-            font-size: 1.1rem;
-        }
-        
-        .cell-id {
-            background: #f8f9fa;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-family: monospace;
-            color: var(--dark);
-        }
-        
-        .link-btn {
-            display: inline-block;
-            background: var(--primary);
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            transition: all 0.3s;
-            text-align: center;
-        }
-        
-        .link-btn:hover {
-            background: #0056b3;
-            color: white;
-            transform: translateY(-2px);
-        }
-        
-        .footer {
-            text-align: center;
+            border-radius: 15px;
             padding: 15px;
-            color: var(--gray);
-            font-size: 0.9rem;
-            border-top: 1px solid #eee;
-            margin-top: 10px;
-        }
-        
-        .loading {
             text-align: center;
-            padding: 20px;
-            color: var(--gray);
+            transition: all 0.4s ease;
+            opacity: 0.4; /* باهت افتراضياً */
+            filter: grayscale(100%); /* رمادي افتراضياً */
+            transform: scale(0.95);
+            box-shadow: none;
+            background: #e9ecef;
+            color: #6c757d;
         }
-        
-        .no-data {
-            text-align: center;
-            padding: 30px;
-            color: var(--gray);
-            font-size: 1.1rem;
+
+        .source-card i { font-size: 2.5rem; margin-bottom: 10px; }
+        .source-card h5 { font-weight: bold; font-size: 1rem; margin: 0; }
+
+        /* حالات التنشيط (Active States) */
+        .source-card.active {
+            opacity: 1;
+            filter: grayscale(0%);
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            color: white;
         }
-        
-        .no-data i {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            color: #ddd;
+
+        /* ألوان المصادر عند التنشيط */
+        .active-gps { background: linear-gradient(135deg, #28a745, #218838); } /* أخضر */
+        .active-wifi { background: linear-gradient(135deg, #007bff, #0056b3); } /* أزرق */
+        .active-tower { background: linear-gradient(135deg, #fd7e14, #d35400); } /* برتقالي */
+
+        /* الخريطة */
+        #map { height: 55vh; width: 100%; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid white; }
+
+        /* تفاصيل سفلية */
+        .info-badge {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #343a40;
         }
+        .info-badge i { margin-left: 8px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1><i class="fas fa-satellite-dish"></i> نظام تتبع GPS - معلومات البرج والموقع</h1>
-    </div>
+<div class="container py-3">
+    <h3 class="text-center mb-4 fw-bold text-dark"><i class="fas fa-location-dot text-danger"></i> نظام تتبع المركبة</h3>
 
-    <div id="map-container">
-        <div id="map"></div>
-        <div class="map-overlay">
-            <div class="status-card">
-                <span class="status-indicator status-offline" id="statusIndicator"></span>
-                <span class="status-text" id="statusText">جاري الاتصال...</span>
-            </div>
-            <button class="refresh-btn" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i> تحديث البيانات
-            </button>
-        </div>
-    </div>
-
-    <div class="info-container">
-        <div class="info-card">
-            <div class="card-header">
-                <i class="fas fa-info-circle"></i>
-                <h3>معلومات الموقع</h3>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="far fa-clock"></i> آخر تحديث:</span>
-                <span class="data-value" id="time">--:--:--</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-tachometer-alt"></i> السرعة:</span>
-                <span class="data-value speed-value" id="speed">0 km/h</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-map-marker-alt"></i> الإحداثيات:</span>
-                <span class="data-value" id="coordinates">33.3152, 44.3661</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-external-link-alt"></i> رابط الموقع:</span>
-                <a class="link-btn" id="gmaps" href="#" target="_blank">فتح في خرائط جوجل</a>
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div id="card-gps" class="source-card">
+                <i class="fas fa-satellite"></i>
+                <h5>GPS</h5>
+                <small>أقمار صناعية</small>
             </div>
         </div>
         
-        <div class="info-card">
-            <div class="card-header">
+        <div class="col-4">
+            <div id="card-wifi" class="source-card">
+                <i class="fas fa-wifi"></i>
+                <h5>WiFi</h5>
+                <small>راوتر منزلي</small>
+            </div>
+        </div>
+
+        <div class="col-4">
+            <div id="card-tower" class="source-card">
                 <i class="fas fa-broadcast-tower"></i>
-                <h3>معلومات البرج الخلوي</h3>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-network-wired"></i> نوع الشبكة:</span>
-                <span class="data-value" id="netType">--</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-hashtag"></i> رقم البرج (Cell ID):</span>
-                <span class="cell-id" id="cellId">--</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-map-marked-alt"></i> المنطقة (LAC):</span>
-                <span class="data-value" id="lac">--</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label"><i class="fas fa-signal"></i> قوة الإشارة:</span>
-                <span class="data-value" id="signalStrength">--</span>
+                <h5>Tower</h5>
+                <small>أبراج اتصال</small>
             </div>
         </div>
     </div>
 
-    <div class="footer">
-        <p>© 2023 نظام تتبع GPS | تم التحديث آخر مرة: <span id="lastUpdateTime">--:--:--</span></p>
+    <div class="row mb-3">
+        <div class="col-12">
+            <div id="map"></div>
+        </div>
     </div>
 
-    <script>
-        // ---------------------------------------------------------
-        // 🔴 استبدل هذا الرابط برابط الداتابيس الخاص بك 🔴
-        const firebaseConfig = {
-            databaseURL: "https://gps-tracker-534ae-default-rtdb.firebaseio.com/"
-        };
-        // ---------------------------------------------------------
+    <div class="row text-center">
+        <div class="col-6">
+            <div class="info-badge text-primary">
+                <i class="fas fa-tachometer-alt"></i> السرعة: <span id="speedVal">0</span> كم/س
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="info-badge text-danger">
+                <i class="fas fa-crosshairs"></i> الدقة: <span id="accVal">--</span> متر
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="info-badge text-secondary">
+                <i class="far fa-clock"></i> آخر تحديث: <span id="lastTime">--:--:--</span>
+            </div>
+        </div>
+    </div>
 
-        // تهيئة Firebase
-        firebase.initializeApp(firebaseConfig);
-        const dbRef = firebase.database().ref('gps');
-        
-        // عناصر DOM
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const lastUpdateTime = document.getElementById('lastUpdateTime');
-        
-        // إعداد الخريطة
-        var map = L.map('map').setView([33.3152, 44.3661], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-        
-        var marker = L.marker([33.3152, 44.3661]).addTo(map);
-        
-        // إضافة دائرة لتوضيح موقع البرج
-        var towerCircle = L.circle([33.3152, 44.3661], {
-            color: 'blue',
-            fillColor: '#007bff',
-            fillOpacity: 0.1,
-            radius: 100
-        }).addTo(map);
-        
-        // تحديث حالة الاتصال
-        function updateConnectionStatus(isOnline, lastUpdate) {
-            if (isOnline) {
-                statusIndicator.className = "status-indicator status-online";
-                statusText.textContent = "متصل ✅";
-            } else {
-                statusIndicator.className = "status-indicator status-offline";
-                statusText.textContent = "غير متصل ❌";
-            }
-            
-            if (lastUpdate) {
-                lastUpdateTime.textContent = lastUpdate;
-            }
+    <div class="d-grid gap-2 mt-2">
+        <a id="googleBtn" href="#" target="_blank" class="btn btn-dark btn-lg rounded-pill shadow">
+            <i class="fab fa-google"></i> فتح في Google Maps
+        </a>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    // 🛑🛑 ضع رابط الفايربيس الخاص بك هنا 🛑🛑
+    const firebaseURL = "https://gps-tracker-534ae-default-rtdb.firebaseio.com/gps.json";
+
+    // إعداد الخريطة
+    var map = L.map('map').setView([33.3152, 44.3661], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // أيقونة السيارة
+    var carIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png', // أيقونة سيارة جميلة
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+    });
+
+    var marker = L.marker([0, 0], {icon: carIcon}).addTo(map);
+    var circle = L.circle([0, 0], {radius: 0}).addTo(map);
+
+    // دالة تحديث الواجهة
+    function updateUI(type) {
+        // 1. إعادة تعيين الكل للوضع الباهت
+        document.getElementById('card-gps').className = "source-card";
+        document.getElementById('card-wifi').className = "source-card";
+        document.getElementById('card-tower').className = "source-card";
+
+        // 2. تنشيط الكارت المناسب
+        if (type.includes("GPS")) {
+            document.getElementById('card-gps').classList.add("active", "active-gps");
+            circle.setStyle({color: 'green', fillColor: '#28a745'});
+        } 
+        else if (type.includes("WiFi")) {
+            document.getElementById('card-wifi').classList.add("active", "active-wifi");
+            circle.setStyle({color: 'blue', fillColor: '#007bff'});
+        } 
+        else {
+            document.getElementById('card-tower').classList.add("active", "active-tower");
+            circle.setStyle({color: 'orange', fillColor: '#fd7e14'});
         }
-        
-        // تحديث واجهة المستخدم
-        function updateUI(data) {
-            if (data) {
-                const lat = parseFloat(data.lat);
-                const lng = parseFloat(data.lng);
-                
-                // تحديث الخريطة
-                marker.setLatLng([lat, lng]);
-                towerCircle.setLatLng([lat, lng]);
-                map.setView([lat, lng], 15);
-                
-                // تحديث معلومات الموقع
-                document.getElementById('time').textContent = data.time || "غير متوفر";
-                document.getElementById('speed').textContent = data.speed + " km/h";
-                document.getElementById('coordinates').textContent = lat.toFixed(6) + ", " + lng.toFixed(6);
-                
-                // تحديث معلومات البرج
-                document.getElementById('netType').textContent = data.net_type || "N/A";
-                document.getElementById('cellId').textContent = data.cell_id || "جاري البحث...";
-                document.getElementById('lac').textContent = data.lac || "N/A";
-                
-                // محاكاة قوة الإشارة (لأنها غير موجودة في البيانات الحالية)
-                const signalStrength = data.signal || Math.floor(Math.random() * 5) + 1;
-                let signalText = "";
-                let signalIcon = "";
-                
-                if (signalStrength >= 4) {
-                    signalText = "قوية جدًا";
-                    signalIcon = "📶";
-                } else if (signalStrength >= 2) {
-                    signalText = "جيدة";
-                    signalIcon = "📶";
-                } else {
-                    signalText = "ضعيفة";
-                    signalIcon = "📶";
+    }
+
+    function fetchData() {
+        fetch(firebaseURL)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.lat && data.lng) {
+                    var lat = parseFloat(data.lat);
+                    var lng = parseFloat(data.lng);
+                    var acc = data.accuracy || 0;
+                    var type = data.type || "Unknown";
+                    var speed = Math.round(data.speed || 0);
+
+                    // تحديث الخريطة
+                    var pos = new L.LatLng(lat, lng);
+                    marker.setLatLng(pos);
+                    circle.setLatLng(pos);
+                    circle.setRadius(acc);
+                    map.setView(pos);
+
+                    // تحديث الأرقام والنصوص
+                    document.getElementById('speedVal').innerText = speed;
+                    document.getElementById('accVal').innerText = acc;
+                    document.getElementById('lastTime').innerText = new Date().toLocaleTimeString();
+                    document.getElementById('googleBtn').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+                    // 🔥 تشغيل لوجيك الألوان والبطاقات
+                    updateUI(type);
                 }
-                
-                document.getElementById('signalStrength').textContent = signalIcon + " " + signalText;
-                
-                // رابط خرائط جوجل
-                const gmapsLink = document.getElementById('gmaps');
-                gmapsLink.href = `https://www.google.com/maps?q=${lat},${lng}`;
-                
-                // تحديث حالة الاتصال
-                updateConnectionStatus(true, data.time);
-                
-                // تحديث وقت التحديث الأخير في التذييل
-                const now = new Date();
-                const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
-                                  now.getMinutes().toString().padStart(2, '0') + ":" + 
-                                  now.getSeconds().toString().padStart(2, '0');
-                lastUpdateTime.textContent = timeString;
-            } else {
-                // حالة عدم وجود بيانات
-                updateConnectionStatus(false, "لا توجد بيانات");
-            }
-        }
-        
-        // الاستماع للبيانات من Firebase
-        dbRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            updateUI(data);
-        });
-        
-        // زر التحديث اليدوي
-        refreshBtn.addEventListener('click', function() {
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
-            refreshBtn.disabled = true;
-            
-            // إعادة تحميل البيانات يدويًا
-            dbRef.once('value').then((snapshot) => {
-                const data = snapshot.val();
-                updateUI(data);
-                
-                // إعادة تعيين زر التحديث بعد ثانيتين
-                setTimeout(() => {
-                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث البيانات';
-                    refreshBtn.disabled = false;
-                }, 2000);
-            });
-        });
-        
-        // تحديث حالة الاتصال كل 10 ثواني
-        setInterval(() => {
-            dbRef.once('value').then((snapshot) => {
-                const data = snapshot.val();
-                if (data && data.time) {
-                    updateConnectionStatus(true, data.time);
-                } else {
-                    updateConnectionStatus(false, "لا توجد بيانات حديثة");
-                }
-            });
-        }, 10000);
-        
-        // تهيئة الحالة الأولية
-        updateConnectionStatus(false, "جاري الاتصال...");
-    </script>
+            })
+            .catch(err => console.error(err));
+    }
+
+    // تحديث كل 3 ثواني
+    setInterval(fetchData, 3000);
+    fetchData();
+
+</script>
+
 </body>
 </html>
