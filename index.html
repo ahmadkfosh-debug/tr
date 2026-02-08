@@ -2,206 +2,368 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التتبع الاحترافية 🛰️</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🚗 نظام التتبع الذكي | لوحة التحكم الحية</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root {
+            --primary: #2563eb; --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --dark: #1e293b; --light: #f8fafc; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        body { font-family: 'Cairo', sans-serif; background: #f1f5f9; color: var(--dark); overflow-x: hidden; }
         
-        /* تنسيق بطاقات المصادر */
+        /* الهيدر */
+        .main-header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white; padding: 1.5rem; border-radius: 0 0 20px 20px; margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; overflow: hidden;
+        }
+        .header-content { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+        .logo-box { 
+            width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; backdrop-filter: blur(5px);
+        }
+        .status-badge {
+            background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 0.5rem 1rem;
+            border-radius: 50px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .pulse { width: 10px; height: 10px; background: #34d399; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+
+        /* بطاقات المصادر */
+        .sources-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; padding: 0 1rem; margin-bottom: 2rem; }
         .source-card {
-            border: none;
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-            transition: all 0.4s ease;
-            opacity: 0.4; /* باهت افتراضياً */
-            filter: grayscale(100%); /* رمادي افتراضياً */
-            transform: scale(0.95);
-            box-shadow: none;
-            background: #e9ecef;
-            color: #6c757d;
+            background: white; border-radius: 16px; padding: 1.5rem; text-align: center;
+            transition: all 0.3s ease; border: 2px solid transparent; opacity: 0.6; filter: grayscale(80%);
+            box-shadow: var(--shadow); position: relative; overflow: hidden;
         }
+        .source-card.active { opacity: 1; filter: grayscale(0%); transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        
+        .source-card.gps.active { border-color: var(--success); }
+        .source-card.wifi.active { border-color: var(--primary); }
+        .source-card.tower.active { border-color: var(--warning); }
 
-        .source-card i { font-size: 2.5rem; margin-bottom: 10px; }
-        .source-card h5 { font-weight: bold; font-size: 1rem; margin: 0; }
-
-        /* حالات التنشيط (Active States) */
-        .source-card.active {
-            opacity: 1;
-            filter: grayscale(0%);
-            transform: scale(1.05);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-            color: white;
+        .source-icon {
+            width: 60px; height: 60px; margin: 0 auto 1rem; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            background: var(--light); color: var(--dark); transition: all 0.3s;
         }
+        .source-card.gps.active .source-icon { background: #dcfce7; color: var(--success); }
+        .source-card.wifi.active .source-icon { background: #dbeafe; color: var(--primary); }
+        .source-card.tower.active .source-icon { background: #fef3c7; color: var(--warning); }
 
-        /* ألوان المصادر عند التنشيط */
-        .active-gps { background: linear-gradient(135deg, #28a745, #218838); } /* أخضر */
-        .active-wifi { background: linear-gradient(135deg, #007bff, #0056b3); } /* أزرق */
-        .active-tower { background: linear-gradient(135deg, #fd7e14, #d35400); } /* برتقالي */
+        .stat-row { display: flex; justify-content: space-around; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+        .stat-item h4 { font-size: 0.8rem; color: #64748b; margin: 0; }
+        .stat-item p { font-size: 1.1rem; font-weight: 700; margin: 0; }
 
         /* الخريطة */
-        #map { height: 55vh; width: 100%; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid white; }
-
-        /* تفاصيل سفلية */
-        .info-badge {
-            background: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: #343a40;
+        .map-container { padding: 0 1rem; margin-bottom: 2rem; }
+        .map-box { 
+            height: 60vh; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); 
+            border: 4px solid white; position: relative;
         }
-        .info-badge i { margin-left: 8px; }
+        #map { height: 100%; width: 100%; }
+
+        /* الإحصائيات السفلية */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; padding: 0 1rem; margin-bottom: 2rem; }
+        .mini-stat { background: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: var(--shadow); }
+        .mini-stat i { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .mini-stat .val { font-size: 1.5rem; font-weight: 800; display: block; }
+        .mini-stat .lbl { font-size: 0.8rem; color: #64748b; }
+
+        /* الفوتر والأزرار */
+        .controls { padding: 0 1rem 2rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn-custom { 
+            flex: 1; padding: 1rem; border: none; border-radius: 12px; font-weight: 700; 
+            display: flex; align-items: center; justify-content: center; gap: 10px; 
+            transition: transform 0.2s; cursor: pointer; text-decoration: none;
+        }
+        .btn-google { background: white; color: var(--dark); box-shadow: var(--shadow); }
+        .btn-reset { background: #fee2e2; color: var(--danger); }
+        .btn-custom:hover { transform: translateY(-2px); }
+
+        /* شاشة التحميل */
+        #loader {
+            position: fixed; inset: 0; background: white; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s;
+        }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-<div class="container py-3">
-    <h3 class="text-center mb-4 fw-bold text-dark"><i class="fas fa-location-dot text-danger"></i> نظام تتبع المركبة</h3>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>جاري الاتصال بالقمر الصناعي...</p>
+    </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-4">
-            <div id="card-gps" class="source-card">
-                <i class="fas fa-satellite"></i>
-                <h5>GPS</h5>
-                <small>أقمار صناعية</small>
+    <header class="main-header">
+        <div class="header-content">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="logo-box"><i class="fas fa-satellite-dish"></i></div>
+                <div>
+                    <h1 style="font-size: 1.4rem; margin: 0;">نظام التتبع الذكي</h1>
+                    <small style="opacity: 0.8;">V52 - Realtime Tracking</small>
+                </div>
+            </div>
+            <div class="status-badge">
+                <div class="pulse"></div>
+                <span id="connStatus">متصل</span>
             </div>
         </div>
-        
-        <div class="col-4">
-            <div id="card-wifi" class="source-card">
-                <i class="fas fa-wifi"></i>
-                <h5>WiFi</h5>
-                <small>راوتر منزلي</small>
+    </header>
+
+    <div class="sources-grid">
+        <div id="card-gps" class="source-card gps">
+            <div class="source-icon"><i class="fas fa-satellite"></i></div>
+            <h3>GPS Satellite</h3>
+            <p style="font-size: 0.9rem; color: #64748b;">المصدر الأساسي</p>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <h4>الأقمار</h4>
+                    <p id="satCount">--</p>
+                </div>
+                <div class="stat-item">
+                    <h4>الدقة</h4>
+                    <p id="gpsAcc">--</p>
+                </div>
             </div>
         </div>
 
-        <div class="col-4">
-            <div id="card-tower" class="source-card">
-                <i class="fas fa-broadcast-tower"></i>
-                <h5>Tower</h5>
-                <small>أبراج اتصال</small>
+        <div id="card-wifi" class="source-card wifi">
+            <div class="source-icon"><i class="fas fa-wifi"></i></div>
+            <h3>WiFi Locator</h3>
+            <p style="font-size: 0.9rem; color: #64748b;">المصدر الثانوي</p>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <h4>الشبكات</h4>
+                    <p id="wifiCount">--</p>
+                </div>
+                <div class="stat-item">
+                    <h4>الإشارة</h4>
+                    <p id="wifiSignal">--</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="card-tower" class="source-card tower">
+            <div class="source-icon"><i class="fas fa-broadcast-tower"></i></div>
+            <h3>Cell Tower</h3>
+            <p style="font-size: 0.9rem; color: #64748b;">مصدر الطوارئ</p>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <h4>الأبراج</h4>
+                    <p>1</p>
+                </div>
+                <div class="stat-item">
+                    <h4>الجودة</h4>
+                    <p id="towerQuality">--</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row mb-3">
-        <div class="col-12">
+    <div class="map-container">
+        <div class="map-box">
             <div id="map"></div>
         </div>
-    </div>
-
-    <div class="row text-center">
-        <div class="col-6">
-            <div class="info-badge text-primary">
-                <i class="fas fa-tachometer-alt"></i> السرعة: <span id="speedVal">0</span> كم/س
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="info-badge text-danger">
-                <i class="fas fa-crosshairs"></i> الدقة: <span id="accVal">--</span> متر
-            </div>
-        </div>
-        <div class="col-12">
-            <div class="info-badge text-secondary">
-                <i class="far fa-clock"></i> آخر تحديث: <span id="lastTime">--:--:--</span>
-            </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.9rem; color: #64748b;">
+            <i class="fas fa-clock"></i> آخر تحديث: <span id="lastUpdate">--:--:--</span>
         </div>
     </div>
 
-    <div class="d-grid gap-2 mt-2">
-        <a id="googleBtn" href="#" target="_blank" class="btn btn-dark btn-lg rounded-pill shadow">
-            <i class="fab fa-google"></i> فتح في Google Maps
+    <div class="stats-grid">
+        <div class="mini-stat">
+            <i class="fas fa-tachometer-alt text-primary"></i>
+            <span class="val" id="speedVal">0</span>
+            <span class="lbl">السرعة (كم/س)</span>
+        </div>
+        <div class="mini-stat">
+            <i class="fas fa-bullseye text-danger"></i>
+            <span class="val" id="accVal">--</span>
+            <span class="lbl">الدقة (متر)</span>
+        </div>
+        <div class="mini-stat">
+            <i class="fas fa-route text-success"></i>
+            <span class="val" id="distanceVal">0.0</span>
+            <span class="lbl">المسافة (كم)</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <a id="googleBtn" href="#" target="_blank" class="btn-custom btn-google">
+            <i class="fab fa-google"></i> خرائط جوجل
         </a>
+        <button onclick="resetTrip()" class="btn-custom btn-reset">
+            <i class="fas fa-redo"></i> تصفير الرحلة
+        </button>
     </div>
 
-</div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 🛑🛑 رابط الفايربيس الخاص بك (تأكد منه) 🛑🛑
+        const FIREBASE_URL = "https://gps-tracker-534ae-default-rtdb.firebaseio.com/gps.json";
 
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script>
-    // 🛑🛑 ضع رابط الفايربيس الخاص بك هنا 🛑🛑
-    const firebaseURL = "https://gps-tracker-534ae-default-rtdb.firebaseio.com/gps.json";
+        // المتغيرات العامة
+        let map, marker, circle;
+        let lastLat = 0, lastLng = 0;
+        let totalDistance = 0;
+        let firstLoad = true;
 
-    // إعداد الخريطة
-    var map = L.map('map').setView([33.3152, 44.3661], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+        // إخفاء شاشة التحميل
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            }, 1500);
+        });
 
-    // أيقونة السيارة
-    var carIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png', // أيقونة سيارة جميلة
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-    });
+        // تهيئة الخريطة
+        function initMap() {
+            map = L.map('map').setView([33.3152, 44.3661], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
 
-    var marker = L.marker([0, 0], {icon: carIcon}).addTo(map);
-    var circle = L.circle([0, 0], {radius: 0}).addTo(map);
+            // أيقونة السيارة
+            const carIcon = L.divIcon({
+                html: '<div style="font-size: 30px; color: #2563eb; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));"><i class="fas fa-car-side"></i></div>',
+                className: 'custom-car-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
 
-    // دالة تحديث الواجهة
-    function updateUI(type) {
-        // 1. إعادة تعيين الكل للوضع الباهت
-        document.getElementById('card-gps').className = "source-card";
-        document.getElementById('card-wifi').className = "source-card";
-        document.getElementById('card-tower').className = "source-card";
-
-        // 2. تنشيط الكارت المناسب
-        if (type.includes("GPS")) {
-            document.getElementById('card-gps').classList.add("active", "active-gps");
-            circle.setStyle({color: 'green', fillColor: '#28a745'});
-        } 
-        else if (type.includes("WiFi")) {
-            document.getElementById('card-wifi').classList.add("active", "active-wifi");
-            circle.setStyle({color: 'blue', fillColor: '#007bff'});
-        } 
-        else {
-            document.getElementById('card-tower').classList.add("active", "active-tower");
-            circle.setStyle({color: 'orange', fillColor: '#fd7e14'});
+            marker = L.marker([33.3152, 44.3661], {icon: carIcon}).addTo(map);
+            circle = L.circle([33.3152, 44.3661], {radius: 50, color: '#2563eb', fillOpacity: 0.1}).addTo(map);
+            
+            // بدء جلب البيانات
+            setInterval(fetchData, 3000);
+            fetchData();
         }
-    }
 
-    function fetchData() {
-        fetch(firebaseURL)
-            .then(res => res.json())
-            .then(data => {
+        // دالة حساب المسافة (Haversine Formula)
+        function calcDistance(lat1, lon1, lat2, lon2) {
+            if (lat1 === 0 || lat2 === 0) return 0;
+            const R = 6371; // نصف قطر الأرض كم
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // المسافة بالكيلومتر
+        }
+
+        // جلب البيانات من الفايربيس
+        async function fetchData() {
+            try {
+                const response = await fetch(FIREBASE_URL);
+                const data = await response.json();
+
                 if (data && data.lat && data.lng) {
-                    var lat = parseFloat(data.lat);
-                    var lng = parseFloat(data.lng);
-                    var acc = data.accuracy || 0;
-                    var type = data.type || "Unknown";
-                    var speed = Math.round(data.speed || 0);
-
+                    const lat = parseFloat(data.lat);
+                    const lng = parseFloat(data.lng);
+                    const acc = parseFloat(data.accuracy) || 20;
+                    const speed = Math.round(data.speed || 0);
+                    const type = data.type || "Unknown";
+                    
                     // تحديث الخريطة
-                    var pos = new L.LatLng(lat, lng);
-                    marker.setLatLng(pos);
-                    circle.setLatLng(pos);
+                    const newPos = new L.LatLng(lat, lng);
+                    marker.setLatLng(newPos);
+                    circle.setLatLng(newPos);
                     circle.setRadius(acc);
-                    map.setView(pos);
+                    
+                    if (firstLoad) {
+                        map.setView(newPos, 16);
+                        firstLoad = false;
+                        lastLat = lat; lastLng = lng;
+                    } else {
+                        map.panTo(newPos);
+                    }
 
-                    // تحديث الأرقام والنصوص
-                    document.getElementById('speedVal').innerText = speed;
-                    document.getElementById('accVal').innerText = acc;
-                    document.getElementById('lastTime').innerText = new Date().toLocaleTimeString();
-                    document.getElementById('googleBtn').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                    // حساب المسافة التراكمية (فقط إذا تحركت أكثر من 20 متر لتجنب الضجيج)
+                    const dist = calcDistance(lastLat, lastLng, lat, lng);
+                    if (dist > 0.02) { // 20 متر
+                        totalDistance += dist;
+                        lastLat = lat; lastLng = lng;
+                    }
 
-                    // 🔥 تشغيل لوجيك الألوان والبطاقات
-                    updateUI(type);
+                    // تحديث النصوص والأرقام
+                    updateUI(type, acc, speed, totalDistance);
+                    
+                    // تحديث رابط جوجل
+                    document.getElementById('googleBtn').href = `https://www.google.com/maps?q=${lat},${lng}`;
+                    
+                    // وميض حالة الاتصال
+                    const statusDot = document.querySelector('.pulse');
+                    statusDot.style.animation = 'none';
+                    statusDot.offsetHeight; /* trigger reflow */
+                    statusDot.style.animation = 'pulse 2s infinite';
                 }
-            })
-            .catch(err => console.error(err));
-    }
+            } catch (err) {
+                console.error("Error fetching data:", err);
+                document.getElementById('connStatus').innerText = "جاري المحاولة...";
+                document.getElementById('connStatus').style.color = "orange";
+            }
+        }
 
-    // تحديث كل 3 ثواني
-    setInterval(fetchData, 3000);
-    fetchData();
+        // تحديث الواجهة والبطاقات
+        function updateUI(type, acc, speed, dist) {
+            // إعادة تعيين البطاقات
+            document.querySelectorAll('.source-card').forEach(el => el.classList.remove('active'));
+            
+            // تنشيط البطاقة المناسبة
+            if (type.includes("GPS")) {
+                const card = document.getElementById('card-gps');
+                card.classList.add('active');
+                circle.setStyle({color: '#10b981', fillColor: '#10b981'});
+                // تقدير عدد الأقمار بناءً على الدقة
+                document.getElementById('satCount').innerText = acc < 5 ? "12+" : (acc < 10 ? "8-10" : "4-6");
+                document.getElementById('gpsAcc').innerText = acc + "m";
+            } 
+            else if (type.includes("WiFi")) {
+                const card = document.getElementById('card-wifi');
+                card.classList.add('active');
+                circle.setStyle({color: '#2563eb', fillColor: '#2563eb'});
+                // بيانات افتراضية للواي فاي (يمكن جلبها من الكود لاحقاً)
+                document.getElementById('wifiCount').innerText = "3+";
+                document.getElementById('wifiSignal').innerText = "Good";
+            } 
+            else {
+                const card = document.getElementById('card-tower');
+                card.classList.add('active');
+                circle.setStyle({color: '#f59e0b', fillColor: '#f59e0b'});
+                document.getElementById('towerQuality').innerText = acc < 500 ? "4G LTE" : "3G/2G";
+            }
 
-</script>
+            // تحديث الإحصائيات السفلية
+            document.getElementById('speedVal').innerText = speed;
+            document.getElementById('accVal').innerText = acc;
+            document.getElementById('distanceVal').innerText = dist.toFixed(2);
+            
+            // الوقت
+            const now = new Date();
+            document.getElementById('lastUpdate').innerText = now.toLocaleTimeString();
+        }
 
+        function resetTrip() {
+            if(confirm("هل أنت متأكد من تصفير عداد الرحلة؟")) {
+                totalDistance = 0;
+                document.getElementById('distanceVal').innerText = "0.0";
+            }
+        }
+
+        // تشغيل الخريطة
+        initMap();
+
+    </script>
 </body>
 </html>
